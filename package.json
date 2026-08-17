@@ -96,6 +96,8 @@
       ],
       "icon": "build/icon.png",
       "executableName": "prensa",
+      "maintainer": "samSHs <177653064+samSHs@users.noreply.github.com>",
+      "syncDesktopName": true,
       "category": "Game",
       "synopsis": "Terror psicologico em ASCII semi-3D",
       "description": "PRENSA e um jogo de terror psicologico renderizado em ASCII semi-3D. Voce opera uma prensa industrial e obedece — ou nao — as ordens do radio.",
