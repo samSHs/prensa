@@ -1,0 +1,44 @@
+name: Release Linux
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag da release onde anexar os pacotes
+        required: true
+        default: v0.1.0
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run icon
+      - name: Empacotar AppImage e deb
+        run: npx electron-builder --linux --x64 --publish never
+      - name: Gerar checksums
+        working-directory: release
+        run: |
+          sha256sum PRENSA-*.AppImage PRENSA-*.deb > SHA256SUMS-linux.txt
+          cat SHA256SUMS-linux.txt
+      - name: Anexar na release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release upload "$TAG" \
+            release/PRENSA-*.AppImage \
+            release/PRENSA-*.deb \
+            release/SHA256SUMS-linux.txt \
+            --repo "$GITHUB_REPOSITORY" --clobber

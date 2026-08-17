@@ -78,6 +78,39 @@
       "requestExecutionLevel": "user",
       "splashImage": "build/splash.bmp",
       "useZip": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "executableName": "prensa",
+      "category": "Game",
+      "synopsis": "Terror psicologico em ASCII semi-3D",
+      "description": "PRENSA e um jogo de terror psicologico renderizado em ASCII semi-3D. Voce opera uma prensa industrial e obedece — ou nao — as ordens do radio.",
+      "artifactName": "PRENSA-${version}-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "PRENSA",
+          "Comment": "Terror psicologico em ASCII semi-3D",
+          "Categories": "Game;ActionGame;"
+        }
+      }
+    },
+    "deb": {
+      "artifactName": "PRENSA-${version}-${arch}.${ext}",
+      "priority": "optional"
     }
   }
 }
