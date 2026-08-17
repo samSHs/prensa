@@ -1,0 +1,1263 @@
+/* ---------------------------------------------------------------------------
+   PRENSA — fosforo ambar sobre concreto molhado.
+   Tudo mono, tudo escuro. Nenhuma cor "de interface": so o que uma CRT suja
+   conseguiria emitir.
+--------------------------------------------------------------------------- */
+
+:root {
+  --amber: #ffb24a;
+  --amber-dim: #8a5a1e;
+  --amber-ghost: #43290d;
+  --blood: #ff4030;
+  --blood-dim: #6d1a12;
+  --cold: #64d8c6;
+  --paper: #ffe6c2;
+  --void: #06050400;
+
+  --mono: 'Cascadia Mono', 'Consolas', 'DejaVu Sans Mono', 'Courier New', monospace;
+
+  /* pulsados por JS conforme o perigo sobe */
+  --danger: 0;
+  --shake: 0px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: #040303;
+  color: var(--amber);
+  font-family: var(--mono);
+  overflow: hidden;
+  cursor: none;
+}
+
+body.show-cursor {
+  cursor: default;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: translate(var(--shake), calc(var(--shake) * -0.6));
+}
+
+/* ---------------------------------------------------------------- overlays */
+
+#grain,
+#vignette,
+#flash,
+#subliminal {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#grain {
+  opacity: 0.055;
+  mix-blend-mode: screen;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.9) 0px,
+    rgba(255, 255, 255, 0.9) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: grain-roll 7.3s linear infinite;
+}
+
+@keyframes grain-roll {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 120px;
+  }
+}
+
+#vignette {
+  background:
+    radial-gradient(ellipse 78% 68% at 50% 48%, transparent 42%, rgba(0, 0, 0, 0.86) 100%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent 18%, transparent 76%, rgba(0, 0, 0, 0.72));
+}
+
+#flash {
+  background: var(--blood);
+  opacity: 0;
+  mix-blend-mode: screen;
+  transition: opacity 90ms linear;
+}
+
+#subliminal {
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  color: var(--paper);
+  mix-blend-mode: screen;
+}
+
+#subliminal-art {
+  font-size: clamp(6px, 1.1vw, 13px);
+  /* zero espacamento: os blocos U+2588 precisam encostar uns nos outros,
+     senao o desenho vira listra vertical */
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+  text-shadow: 0 0 18px rgba(255, 60, 40, 0.55);
+}
+
+/* ------------------------------------------------------------------- HUD */
+
+#hud {
+  position: absolute;
+  inset: 0 0 auto 0;
+  padding: 12px 18px 10px;
+  background: linear-gradient(to bottom, rgba(4, 3, 3, 0.92), rgba(4, 3, 3, 0));
+  pointer-events: none;
+}
+
+#hud[hidden] {
+  display: none;
+}
+
+.hud-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+}
+
+.hud-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 68px;
+}
+
+.hud-cell.grow {
+  flex: 1;
+}
+
+.lbl {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--amber-dim);
+}
+
+.val {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  text-shadow: 0 0 10px rgba(255, 178, 74, 0.35);
+}
+
+.val.hot {
+  color: var(--blood);
+  text-shadow: 0 0 12px rgba(255, 64, 48, 0.6);
+}
+
+#track {
+  position: relative;
+  height: 12px;
+  border: 1px solid var(--amber-ghost);
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 178, 74, 0.09) 0 1px,
+    transparent 1px 9px
+  );
+}
+
+#track-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(255, 64, 48, 0.55), rgba(255, 178, 74, 0.14));
+}
+
+#track-dot {
+  position: absolute;
+  top: -4px;
+  left: 0%;
+  width: 3px;
+  height: 20px;
+  background: var(--paper);
+  box-shadow: 0 0 12px rgba(255, 230, 194, 0.85);
+  transform: translateX(-1px);
+}
+
+.track-end {
+  position: absolute;
+  top: 15px;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--amber-ghost);
+}
+
+.track-end.left {
+  left: 0;
+  color: var(--blood-dim);
+}
+
+.track-end.right {
+  right: 0;
+}
+
+/* ------------------------------------------------------------------ VOZ */
+
+#voice {
+  position: absolute;
+  left: 50%;
+  top: 7.5%;
+  transform: translateX(-50%);
+  width: min(74ch, 88vw);
+  text-align: center;
+  pointer-events: none;
+}
+
+#voice[hidden] {
+  display: none;
+}
+
+#voice-who {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.34em;
+  color: var(--blood-dim);
+  border-bottom: 1px solid var(--blood-dim);
+  padding-bottom: 2px;
+  margin-bottom: 7px;
+}
+
+#voice-line {
+  font-size: clamp(13px, 1.35vw, 18px);
+  line-height: 1.5;
+  color: var(--paper);
+  text-shadow: 0 0 16px rgba(255, 120, 70, 0.35);
+  min-height: 1.5em;
+  white-space: pre-wrap;
+}
+
+#voice-line::after {
+  content: '▌';
+  opacity: 0.8;
+  animation: blink 0.75s steps(1) infinite;
+}
+
+#voice.done #voice-line::after {
+  content: '';
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+#intro-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 5vh;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--amber-ghost);
+  pointer-events: none;
+  /* aparece só depois que a primeira frase já assentou */
+  animation: hint-in 900ms ease-out 2.6s both;
+}
+
+#intro-hint[hidden] {
+  display: none;
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* -------------------------------------------------------------- TERMINAL */
+
+#terminal {
+  position: absolute;
+  left: 50%;
+  bottom: 2.2vh;
+  transform: translateX(-50%);
+  width: min(78ch, 94vw);
+  pointer-events: auto;
+}
+
+#terminal[hidden] {
+  display: none;
+}
+
+.term-frame {
+  border: 1px solid var(--amber-ghost);
+  background: linear-gradient(to bottom, rgba(10, 7, 5, 0.93), rgba(6, 4, 3, 0.97));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 46px rgba(255, 140, 40, 0.07),
+    inset 0 0 60px rgba(255, 140, 40, 0.035);
+  padding: 9px 14px 10px;
+}
+
+/* O lembrete do meio existe porque quem testou nao ligava o quebra-cabeca
+   do terminal com a esteira: via um labirinto e achava que o jogo era o
+   labirinto. */
+.term-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  color: var(--amber-dim);
+  border-bottom: 1px solid var(--amber-ghost);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.term-head .stakes {
+  color: var(--paper);
+  opacity: 0.8;
+  letter-spacing: 0.14em;
+}
+
+#m-body {
+  font-size: clamp(10px, 1.16vw, 15.5px);
+  line-height: 1.16;
+  letter-spacing: 0.02em;
+  white-space: pre;
+  color: var(--amber-dim);
+  /* alinhado à esquerda dentro de um bloco centrado: o diagrama de válvulas
+     é uma escada, centrar linha a linha destruía as colunas */
+  text-align: left;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 9px;
+  overflow-x: auto;
+  min-height: 1em;
+}
+
+#m-body .w {
+  color: #3d2609;
+}
+#m-body .f {
+  color: #8a6526;
+}
+#m-body .dark {
+  color: #120c06;
+}
+#m-body .me {
+  color: var(--cold);
+  text-shadow: 0 0 10px rgba(100, 216, 198, 0.7);
+}
+#m-body .him {
+  color: var(--blood);
+  text-shadow: 0 0 12px rgba(255, 64, 48, 0.85);
+}
+#m-body .ghost {
+  color: var(--blood-dim);
+}
+#m-body .exit {
+  color: var(--paper);
+}
+#m-body .key {
+  color: var(--amber);
+}
+#m-body .hide {
+  color: #6b5a2a;
+}
+#m-body .lure {
+  color: #7a5fa0;
+}
+#m-body .ok {
+  color: #6fff9e;
+}
+#m-body .bad {
+  color: var(--blood);
+}
+#m-body .hl {
+  color: var(--paper);
+}
+
+#m-prompt {
+  font-size: clamp(12px, 1.15vw, 15px);
+  color: var(--paper);
+  margin-bottom: 8px;
+  min-height: 1.2em;
+}
+
+#m-options {
+  list-style: none;
+  display: grid;
+  gap: 3px;
+}
+
+#m-options li {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  font-size: clamp(11px, 1.08vw, 14px);
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  color: var(--amber);
+  cursor: pointer;
+  transition: background 70ms linear, border-color 70ms linear;
+}
+
+#m-options li b {
+  color: var(--amber-dim);
+  font-weight: 400;
+}
+
+#m-options li:hover,
+#m-options li.sel {
+  background: rgba(255, 178, 74, 0.09);
+  border-color: var(--amber-dim);
+  color: var(--paper);
+}
+
+#m-options li.locked {
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+#m-options li.picked {
+  background: rgba(255, 178, 74, 0.16);
+  border-color: var(--amber);
+  opacity: 1;
+}
+
+#m-options li.was-best {
+  border-color: #2f7a4a;
+  color: #6fff9e;
+  opacity: 1;
+}
+
+.term-foot {
+  margin-top: 9px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#m-timer {
+  flex: 1;
+  height: 3px;
+  background: var(--amber-ghost);
+  overflow: hidden;
+}
+
+#m-timer i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--amber);
+  transform-origin: left center;
+}
+
+#m-timer.warn i {
+  background: var(--blood);
+}
+
+/* A explicação da resposta é o material didático do jogo — precisa de linha
+   inteira, não de um cantinho de 22 caracteres. */
+#m-feedback {
+  margin-top: 7px;
+  min-height: 2.5em;
+  font-size: clamp(10.5px, 1.02vw, 13px);
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: var(--amber-dim);
+  text-align: left;
+}
+
+#m-feedback:empty {
+  min-height: 0;
+}
+
+#m-feedback.good {
+  color: #6fff9e;
+}
+#m-feedback.bad {
+  color: var(--blood);
+}
+
+/* ------------------------------------------------------ TRAVA (QTE) */
+
+#lock {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  transform: translateX(-50%);
+  width: min(38ch, 70vw);
+  text-align: center;
+  padding: 10px 16px 12px;
+  border: 1px solid var(--blood);
+  background: rgba(24, 5, 3, 0.86);
+  box-shadow: 0 0 46px rgba(255, 40, 24, 0.28), inset 0 0 40px rgba(255, 40, 24, 0.12);
+  pointer-events: none;
+  animation: lock-in 90ms steps(2);
+  z-index: 24;
+}
+
+#lock[hidden] {
+  display: none;
+}
+
+@keyframes lock-in {
+  from {
+    transform: translateX(-50%) scale(1.12);
+    opacity: 0;
+  }
+}
+
+#lock-label {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.32em;
+  color: var(--blood);
+  margin-bottom: 8px;
+}
+
+#lock-keys {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+#lock-keys kbd {
+  font-family: var(--mono);
+  font-size: 22px;
+  line-height: 1;
+  padding: 8px 13px;
+  border: 1px solid var(--blood-dim);
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#lock-keys kbd.done {
+  color: #6fff9e;
+  border-color: #2f7a4a;
+  opacity: 0.45;
+}
+
+#lock-bar {
+  height: 3px;
+  background: var(--blood-dim);
+  overflow: hidden;
+}
+
+#lock-bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--blood);
+  transform-origin: left center;
+}
+
+/* ------------------------------------------------ INSPEÇÃO DO ZELADOR */
+
+#inspection,
+#training-inspection {
+  position: absolute;
+  inset: 0;
+  z-index: 23;
+  overflow: hidden;
+  pointer-events: none;
+  transition: background 70ms linear, opacity 120ms linear;
+}
+
+#inspection[hidden],
+#training-inspection[hidden] {
+  display: none;
+}
+
+.inspection-light {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 28% 90% at 88% 48%, rgba(190, 222, 224, 0.2), transparent 75%);
+}
+
+.inspection-figure {
+  position: absolute;
+  right: clamp(3vw, 9vw, 140px);
+  top: 16%;
+  color: #020303;
+  font-size: clamp(12px, 2.1vw, 27px);
+  line-height: 1.08;
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.95);
+  transform: translateX(130%) rotate(4deg);
+  opacity: 0;
+}
+
+#inspection[data-stage='approach'],
+#training-inspection[data-stage='approach'] {
+  background: rgba(0, 0, 0, 0.48);
+}
+
+#inspection[data-stage='approach'] .inspection-figure,
+#training-inspection[data-stage='approach'] .inspection-figure {
+  opacity: 0.38;
+  transform: translateX(42%) rotate(4deg);
+  transition: transform 1.4s ease-out, opacity 0.5s linear;
+}
+
+#inspection[data-stage='watch'],
+#training-inspection[data-stage='watch'] {
+  background: rgba(220, 242, 242, 0.76);
+  box-shadow: inset 0 0 20vw rgba(255, 255, 255, 0.8);
+}
+
+#inspection[data-stage='watch'] .inspection-light,
+#training-inspection[data-stage='watch'] .inspection-light {
+  background: rgba(244, 255, 255, 0.34);
+}
+
+#inspection[data-stage='watch'] .inspection-figure,
+#training-inspection[data-stage='watch'] .inspection-figure {
+  opacity: 0.96;
+  transform: translateX(0) rotate(-7deg) scale(1.08);
+  animation: inspection-breathe 1.15s ease-in-out infinite alternate;
+}
+
+#inspection[data-stage='clear'],
+#training-inspection[data-stage='clear'] {
+  background: rgba(255, 225, 180, 0.15);
+  opacity: 0.42;
+}
+
+#inspection[data-stage='clear'] .inspection-figure,
+#training-inspection[data-stage='clear'] .inspection-figure {
+  opacity: 0.2;
+  transform: translateX(36%) rotate(3deg);
+}
+
+@keyframes inspection-breathe {
+  from { transform: translateX(0) rotate(-7deg) scale(1.06); }
+  to { transform: translateX(-1.4vw) rotate(-9deg) scale(1.11); }
+}
+
+#training-inspection {
+  z-index: 34;
+}
+
+.training-inspection-warning {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  color: #080909;
+  font-family: var(--mono);
+  font-size: clamp(13px, 2vw, 24px);
+  font-weight: 700;
+  letter-spacing: 0.38em;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  transform: translateX(-50%);
+  opacity: 0;
+}
+
+#training-inspection[data-stage='watch'] .training-inspection-warning {
+  opacity: 1;
+  animation: flicker 0.18s steps(2) infinite;
+}
+
+/* --------------------------------------------------------- TREINAMENTO */
+
+#training {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  padding: clamp(10px, 2.5vh, 24px) clamp(10px, 3vw, 40px);
+  overflow: auto;
+  background:
+    linear-gradient(rgba(255, 178, 74, 0.025) 1px, transparent 1px) 0 0 / 100% 24px,
+    radial-gradient(ellipse at 50% 38%, rgba(24, 15, 8, 0.98), rgba(3, 2, 2, 0.995));
+}
+
+#training[hidden],
+#training-lesson[hidden],
+#training-practice[hidden],
+#training-next[hidden] {
+  display: none;
+}
+
+.training-shell {
+  width: min(1180px, 100%);
+  min-height: min(720px, calc(100vh - 2 * clamp(10px, 2.5vh, 24px)));
+  margin: 0 auto;
+  border: 1px solid var(--amber-ghost);
+  background: rgba(5, 4, 3, 0.94);
+  box-shadow: 0 0 70px rgba(0, 0, 0, 0.85), inset 0 0 80px rgba(255, 178, 74, 0.025);
+}
+
+.training-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--amber-ghost);
+  background: rgba(255, 178, 74, 0.035);
+}
+
+.training-head span,
+.training-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--amber-dim);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+}
+
+.training-head h2 {
+  color: var(--paper);
+  font-size: clamp(18px, 2.5vw, 30px);
+  font-weight: 400;
+  letter-spacing: 0.34em;
+}
+
+.training-head button,
+.training-actions button,
+.training-primary {
+  font-family: var(--mono);
+  color: var(--amber);
+  background: transparent;
+  border: 1px solid var(--amber-ghost);
+  padding: 9px 13px;
+  cursor: pointer;
+}
+
+.training-start-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.training-start-options > button {
+  font-family: var(--mono);
+  color: var(--amber-dim);
+  background: transparent;
+  border: 1px solid var(--amber-ghost);
+  padding: 9px 13px;
+  cursor: pointer;
+}
+
+.training-start-options > button:hover {
+  color: var(--paper);
+  border-color: var(--amber);
+}
+
+#t-m-options button.eliminated {
+  opacity: 0.28;
+  text-decoration: line-through;
+}
+
+.training-head button:hover,
+.training-actions button:hover,
+.training-primary:hover {
+  color: var(--paper);
+  border-color: var(--amber);
+  background: rgba(255, 178, 74, 0.08);
+}
+
+.training-head small,
+.training-actions small {
+  color: var(--amber-dim);
+}
+
+.training-grid {
+  display: grid;
+  grid-template-columns: minmax(205px, 24%) minmax(0, 1fr);
+  min-height: 630px;
+}
+
+.training-nav {
+  padding: 20px 14px;
+  border-right: 1px solid var(--amber-ghost);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.training-nav > button {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  width: 100%;
+  margin-top: 7px;
+  padding: 12px 9px;
+  text-align: left;
+  font-family: var(--mono);
+  color: var(--amber-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.training-nav > button:hover,
+.training-nav > button.active {
+  color: var(--paper);
+  border-color: var(--amber-dim);
+  background: rgba(255, 178, 74, 0.07);
+}
+
+.training-nav > button b {
+  color: var(--amber-ghost);
+  font-weight: 400;
+}
+
+.training-nav > button.active b {
+  color: var(--amber);
+}
+
+.training-nav > button span,
+.training-nav > button small {
+  display: block;
+}
+
+.training-nav > button small {
+  margin-top: 5px;
+  color: var(--amber-ghost);
+  font-size: 9px;
+}
+
+.training-nav > p {
+  margin: 22px 8px 0;
+  color: var(--amber-ghost);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.training-content {
+  min-width: 0;
+  padding: clamp(18px, 3vw, 38px);
+  overflow: hidden;
+}
+
+#training-name {
+  margin: 5px 0 14px;
+  color: var(--paper);
+  font-size: clamp(22px, 3.3vw, 42px);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+}
+
+.training-summary {
+  max-width: 75ch;
+  color: var(--amber);
+  font-size: clamp(11px, 1.1vw, 14px);
+  line-height: 1.65;
+}
+
+.training-steps {
+  max-width: 82ch;
+  margin: 18px 0 16px 22px;
+  color: var(--amber-dim);
+  font-size: clamp(10px, 1vw, 13px);
+  line-height: 1.55;
+}
+
+.training-steps li {
+  padding: 3px 0 3px 6px;
+}
+
+.training-steps li::marker,
+.training-watch b {
+  color: var(--paper);
+}
+
+.training-watch {
+  max-width: 82ch;
+  padding: 10px 12px;
+  color: var(--amber-dim);
+  border-left: 2px solid var(--amber);
+  background: rgba(255, 178, 74, 0.045);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.training-manual {
+  max-width: 90ch;
+  margin: 17px 0;
+  border: 1px solid var(--amber-ghost);
+}
+
+.training-manual summary {
+  padding: 9px 12px;
+  color: var(--amber-dim);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+
+#training-rules {
+  max-height: 29vh;
+  padding: 12px 14px;
+  overflow: auto;
+  color: var(--amber-dim);
+  border-top: 1px solid var(--amber-ghost);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.training-primary {
+  color: var(--paper);
+  border-color: var(--amber-dim);
+  letter-spacing: 0.15em;
+}
+
+.training-practice-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--amber-ghost);
+  color: var(--amber-dim);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+}
+
+#t-m-pulse {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 9px;
+  color: var(--amber-dim);
+  font-size: 8px;
+  letter-spacing: 0.13em;
+}
+
+#t-m-pulse[hidden] {
+  display: none;
+}
+
+#t-m-pulse > div {
+  height: 3px;
+  overflow: hidden;
+  background: var(--amber-ghost);
+}
+
+#t-m-pulse i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #6fff9e;
+  transform-origin: left center;
+}
+
+#t-m-pulse[data-stage='lock'] {
+  color: var(--blood);
+}
+
+#t-m-pulse[data-stage='lock'] i {
+  background: var(--blood);
+  box-shadow: 0 0 9px rgba(255, 40, 40, 0.7);
+}
+
+#t-m-pulse[data-stage='approach'] i {
+  background: var(--amber);
+}
+
+#t-m-pulse[data-stage='watch'] {
+  color: var(--paper);
+}
+
+#t-m-pulse[data-stage='watch'] i {
+  background: var(--paper);
+  box-shadow: 0 0 12px rgba(235, 255, 255, 0.9);
+}
+
+#t-m-pulse[data-stage='clear'] i {
+  background: var(--amber-dim);
+}
+
+#t-m-title {
+  color: var(--paper);
+}
+
+#t-m-state {
+  color: #6fff9e;
+}
+
+#t-m-body {
+  width: fit-content;
+  min-width: min(100%, 55ch);
+  max-width: 100%;
+  max-height: 46vh;
+  margin: 13px auto 9px;
+  overflow: auto;
+  color: var(--amber-dim);
+  font-family: var(--mono);
+  font-size: clamp(9px, 0.92vw, 12px);
+  line-height: 1.12;
+  white-space: pre;
+}
+
+#t-m-prompt {
+  margin: 8px 0;
+  color: var(--paper);
+  font-size: 12px;
+}
+
+#t-m-options {
+  display: grid;
+  gap: 4px;
+}
+
+#t-m-options button {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 9px;
+  text-align: left;
+  font-family: var(--mono);
+  color: var(--amber);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+#t-m-options button:hover,
+#t-m-options button.hint {
+  color: var(--paper);
+  border-color: var(--amber-dim);
+  background: rgba(255, 178, 74, 0.07);
+}
+
+#t-m-options button.hint,
+#t-m-options button.best {
+  border-color: #2f7a4a;
+}
+
+#t-m-options button.picked {
+  background: rgba(255, 178, 74, 0.13);
+}
+
+#t-m-options button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+#t-m-options button.best:disabled {
+  color: #6fff9e;
+  opacity: 1;
+}
+
+#t-m-options button b {
+  color: var(--amber-dim);
+  font-weight: 400;
+}
+
+#t-m-feedback {
+  min-height: 2.8em;
+  margin: 9px 0;
+  color: var(--amber-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+#t-m-feedback.good,
+#t-m-feedback.hint-text {
+  color: #6fff9e;
+}
+
+#t-m-feedback.bad {
+  color: var(--blood);
+}
+
+.training-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--amber-ghost);
+}
+
+.training-actions #training-next {
+  margin-left: auto;
+}
+
+.training-content .hl,
+.training-content .exit {
+  color: var(--paper);
+}
+.training-content .key,
+.training-content .f {
+  color: var(--amber);
+}
+.training-content .bad,
+.training-content .him {
+  color: var(--blood);
+}
+.training-content .ok {
+  color: #6fff9e;
+}
+.training-content .me {
+  color: var(--cold);
+}
+.training-content .ghost,
+.training-content .hide,
+.training-content .w,
+.training-content .dark {
+  color: var(--amber-ghost);
+}
+.training-content .lure {
+  color: #7a5fa0;
+}
+
+@media (max-width: 760px) {
+  #training {
+    padding: 0;
+  }
+  .training-shell {
+    border: 0;
+  }
+  .training-grid {
+    grid-template-columns: 1fr;
+  }
+  .training-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-right: 0;
+    border-bottom: 1px solid var(--amber-ghost);
+  }
+  .training-nav .training-label,
+  .training-nav > p {
+    grid-column: 1 / -1;
+  }
+  .training-nav > button {
+    grid-template-columns: 1fr;
+  }
+  .training-content {
+    overflow: visible;
+  }
+  .training-practice-head {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------- TELAS CHEIAS */
+
+#screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 4vh 6vw;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 45%, rgba(12, 8, 6, 0.86), rgba(3, 2, 2, 0.985));
+  backdrop-filter: blur(1.5px);
+  transition: opacity 420ms ease;
+  z-index: 20;
+}
+
+#screen[hidden] {
+  display: none;
+}
+
+#screen.fade {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#screen-art {
+  font-size: clamp(6px, 0.95vw, 12px);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--blood-dim);
+  text-shadow: 0 0 24px rgba(255, 60, 40, 0.28);
+  white-space: pre;
+  margin-bottom: 6px;
+}
+
+#screen-title {
+  font-size: clamp(28px, 6.4vw, 84px);
+  font-weight: 400;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: var(--paper);
+  text-shadow: 0 0 40px rgba(255, 150, 60, 0.32);
+}
+
+#screen-text {
+  max-width: 62ch;
+  font-size: clamp(11px, 1.15vw, 15px);
+  line-height: 1.75;
+  color: var(--amber-dim);
+  white-space: pre-wrap;
+}
+
+#screen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 8px;
+}
+
+#screen-btn,
+#screen-training {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--paper);
+  background: transparent;
+  border: 1px solid var(--amber-dim);
+  padding: 11px 26px;
+  cursor: pointer;
+  transition: background 120ms linear, border-color 120ms linear;
+}
+
+#screen-training {
+  color: var(--amber);
+}
+
+#screen-training[hidden] {
+  display: none;
+}
+
+#screen-btn:hover,
+#screen-training:hover {
+  background: rgba(255, 178, 74, 0.12);
+  border-color: var(--amber);
+}
+
+#screen-hint {
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  color: var(--amber-ghost);
+}
+
+/* --------------------------------------------------------------- glitch */
+
+.glitching #view {
+  filter: contrast(1.35) saturate(1.2);
+}
+
+.glitching .term-frame {
+  transform: translateX(calc(var(--shake) * 2));
+}
+
+.invert {
+  filter: invert(1) hue-rotate(180deg);
+}

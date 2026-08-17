@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; media-src 'self' data:; worker-src 'self' blob:"
+    />
+    <title>PRENSA</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23090705'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='%23ffb24a' font-family='monospace'%3E%23%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+
+      <!-- vinheta / scanline / ruido sobre tudo -->
+      <div id="grain" aria-hidden="true"></div>
+      <div id="vignette" aria-hidden="true"></div>
+      <div id="flash" aria-hidden="true"></div>
+      <div id="subliminal" aria-hidden="true"><pre id="subliminal-art"></pre></div>
+
+      <!-- HUD superior -->
+      <header id="hud" hidden>
+        <div class="hud-row">
+          <div class="hud-cell">
+            <span class="lbl">SUJEITO</span>
+            <span class="val" id="hud-subject">—</span>
+          </div>
+          <div class="hud-cell grow">
+            <span class="lbl">POSIÇÃO NA ESTEIRA</span>
+            <div id="track">
+              <div id="track-fill"></div>
+              <div id="track-dot"></div>
+              <span class="track-end left">PRENSA</span>
+              <span class="track-end right">ESCOTILHA · 4 TRAVAS</span>
+            </div>
+          </div>
+          <div class="hud-cell">
+            <span class="lbl">ESTEIRA</span>
+            <span class="val" id="hud-belt">—</span>
+          </div>
+          <div class="hud-cell">
+            <span class="lbl">CICLO</span>
+            <span class="val" id="hud-cycle">—</span>
+          </div>
+          <div class="hud-cell">
+            <span class="lbl">FASE</span>
+            <span class="val" id="hud-phase">—</span>
+          </div>
+          <div class="hud-cell">
+            <span class="lbl">CHAVES</span>
+            <span class="val" id="hud-keys">0/4</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- legenda do sequestrador -->
+      <div id="voice" hidden>
+        <span id="voice-who">O ZELADOR</span>
+        <p id="voice-line"></p>
+      </div>
+
+      <p id="intro-hint" hidden>[ENTER] próxima linha &nbsp;·&nbsp; [ESC] pular a abertura</p>
+
+      <!-- trava de seguranca: exige tecla no meio do raciocinio -->
+      <div id="lock" hidden>
+        <span id="lock-label">TRAVA DE SEGURANÇA</span>
+        <div id="lock-keys"></div>
+        <div id="lock-bar"><i></i></div>
+      </div>
+
+      <!-- presença física do Zelador; as regras ficam apenas no treinamento -->
+      <div id="inspection" hidden aria-hidden="true">
+        <div class="inspection-light"></div>
+        <pre class="inspection-figure">     ╭────────╮
+     │        │
+     │   ● ●  │
+     │        │
+     ╰───┬────╯
+        ╱│╲
+       ╱ │ ╲</pre>
+      </div>
+
+      <!-- terminal de missao -->
+      <section id="terminal" hidden>
+        <div class="term-frame">
+          <div class="term-head">
+            <span id="m-title">—</span>
+            <span class="stakes">ACERTO → GANHA FÔLEGO &nbsp;·&nbsp; MISSÃO → CHAVE</span>
+            <span id="m-node">—</span>
+          </div>
+          <pre id="m-body"></pre>
+          <div id="m-prompt"></div>
+          <ol id="m-options"></ol>
+          <div class="term-foot">
+            <div id="m-timer"><i></i></div>
+          </div>
+          <p id="m-feedback"></p>
+        </div>
+      </section>
+
+      <!-- sala didática, fora da campanha e sem punições -->
+      <section id="training" hidden aria-label="Treinamento de missões">
+        <div id="training-inspection" hidden aria-hidden="true">
+          <div class="inspection-light"></div>
+          <pre class="inspection-figure">     ╭────────╮
+     │        │
+     │   ● ●  │
+     │        │
+     ╰───┬────╯
+        ╱│╲
+       ╱ │ ╲</pre>
+          <span class="training-inspection-warning">NÃO SE MOVA</span>
+        </div>
+        <div class="training-shell">
+          <header class="training-head">
+            <div>
+              <span>ARQUIVO DE OPERAÇÕES</span>
+              <h2>TREINAMENTO</h2>
+            </div>
+            <button id="training-exit" type="button">VOLTAR AO TÍTULO <small>[ESC]</small></button>
+          </header>
+
+          <div class="training-grid">
+            <nav class="training-nav" aria-label="Escolha uma missão">
+              <span class="training-label">SELECIONE UM PROTOCOLO</span>
+              <button type="button" data-training-kind="labirinto">
+                <b>01</b><span>O LABIRINTO<small>rádio e perseguição</small></span>
+              </button>
+              <button type="button" data-training-kind="purga">
+                <b>02</b><span>PROTOCOLO DE PURGA<small>pressão hidráulica</small></span>
+              </button>
+              <button type="button" data-training-kind="codigo">
+                <b>03</b><span>CÓDIGO MORTO<small>ordem lógica de corte</small></span>
+              </button>
+              <button type="button" data-training-kind="interferencia">
+                <b>04</b><span>INTERFERÊNCIAS<small>trava e inspeção</small></span>
+              </button>
+              <p>Este ambiente não move a esteira, não concede chaves e não registra erros.</p>
+            </nav>
+
+            <main class="training-content">
+              <section id="training-lesson">
+                <span id="training-eyebrow" class="training-label"></span>
+                <h3 id="training-name"></h3>
+                <p id="training-summary" class="training-summary"></p>
+                <ol id="training-steps" class="training-steps"></ol>
+                <p class="training-watch"><b>OBSERVE:</b> <span id="training-watch"></span></p>
+
+                <details class="training-manual">
+                  <summary>ABRIR MANUAL COMPLETO</summary>
+                  <pre id="training-rules"></pre>
+                </details>
+
+                <div class="training-start-options">
+                  <button id="training-start" class="training-primary" type="button">SIMULAÇÃO REAL · SEM RESPOSTAS</button>
+                  <button id="training-guided" type="button">DEMONSTRAÇÃO GUIADA</button>
+                </div>
+              </section>
+
+              <section id="training-practice" hidden>
+                <div class="training-practice-head">
+                  <span id="t-m-title">—</span>
+                  <span id="t-m-state">PRÁTICA SEGURA</span>
+                  <span id="t-m-node">—</span>
+                </div>
+                <div id="t-m-pulse" hidden>
+                  <span>PRÓXIMA AÇÃO AUTÔNOMA</span>
+                  <div><i></i></div>
+                </div>
+                <pre id="t-m-body"></pre>
+                <p id="t-m-prompt"></p>
+                <div id="t-m-options"></div>
+                <p id="t-m-feedback"></p>
+                <div class="training-actions">
+                  <button id="training-hint" type="button">DICA <small>[CTRL+D]</small></button>
+                  <button id="training-reset" type="button">REINICIAR <small>[CTRL+R]</small></button>
+                  <button id="training-menu" type="button">VOLTAR AO MANUAL <small>[ESC]</small></button>
+                  <button id="training-next" class="training-primary" type="button" hidden>CONTINUAR</button>
+                </div>
+              </section>
+            </main>
+          </div>
+        </div>
+      </section>
+
+      <!-- telas cheias: intro, morte, fuga -->
+      <div id="screen">
+        <pre id="screen-art"></pre>
+        <h1 id="screen-title"></h1>
+        <p id="screen-text"></p>
+        <div id="screen-actions">
+          <button id="screen-btn" type="button"></button>
+          <button id="screen-training" type="button" hidden>TREINAMENTO</button>
+        </div>
+        <p id="screen-hint"></p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

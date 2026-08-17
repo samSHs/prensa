@@ -1,0 +1,11 @@
+node_modules/
+dist/
+release/
+
+# recursos de icone/splash gerados por scripts/generate-icon.mjs
+build/
+
+# bundles gerados pelos harnesses e capturas dos playtests/smoke
+_selftest.mjs
+_*.png
+_*.txt

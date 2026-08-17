@@ -1,0 +1,82 @@
+{
+  "name": "prensa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "samSHs",
+  "description": "PRENSA — terror psicologico em ASCII semi-3D",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "desktop": "npm run build && electron .",
+    "icon": "node scripts/generate-icon.mjs",
+    "package:dir": "npm run build && npm run icon && node scripts/package-windows.mjs --dir",
+    "package:win": "npm run build && npm run icon && node scripts/package-windows.mjs && node scripts/finalize-release.mjs",
+    "typecheck": "tsc --noEmit",
+    "balance": "esbuild _selftest.ts --bundle --platform=node --format=esm --outfile=_selftest.mjs --log-level=warning && node _selftest.mjs",
+    "smoke": "node _smoke.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/three": "0.169.0",
+    "electron": "43.2.0",
+    "electron-builder": "26.15.3",
+    "puppeteer": "^25.4.0",
+    "three": "0.169.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "build": {
+    "appId": "io.github.samshs.prensa",
+    "productName": "PRENSA",
+    "asar": true,
+    "compression": "normal",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "executableName": "PRENSA",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "shortcutName": "PRENSA",
+      "artifactName": "PRENSA-Instalador-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "PRENSA-Portatil-${version}-${arch}.${ext}",
+      "requestExecutionLevel": "user",
+      "splashImage": "build/splash.bmp",
+      "useZip": true
+    }
+  }
+}
