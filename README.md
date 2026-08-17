@@ -6,14 +6,19 @@ Vinte e seis metros atrás, uma escotilha presa por quatro ferrolhos.
 
 A esteira nunca para. O cronômetro nunca para. Ninguém vem.
 
+**▶ [Jogar no navegador](https://samshs.github.io/prensa/)** — nada para instalar.
+
+**⤓ [Baixar](https://github.com/samSHs/prensa/releases/latest)** — Windows
+(instalador ou portátil) e Linux (AppImage ou `.deb`).
+
 ```bash
 npm install
 npm run dev
 ```
 
-Para playtests em outro Windows, use os executáveis prontos de `release/`:
-o instalador cria atalhos; o portátil abre sem instalar nada. O computador de
-teste não precisa de Node, npm, terminal, internet ou WebView2.
+Para playtests offline, use os executáveis prontos de `release/`: o instalador
+cria atalhos; o portátil abre sem instalar nada. O computador de teste não
+precisa de Node, npm, terminal, internet ou WebView2.
 
 ---
 
@@ -441,3 +446,9 @@ empacota os dois formatos e produz o manifesto de playtest.
 
 O RNG é serializável de propósito: as missões precisam ser simuladas para
 frente e voltar ao estado anterior, então o acaso mora dentro do estado.
+
+---
+
+## Licença
+
+MIT — veja [LICENSE](LICENSE).
