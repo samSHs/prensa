@@ -115,14 +115,27 @@ class ValveMission implements Mission {
   readonly howTo = [
     '<span class="hl">A PRENSA ACIMA DE VOCÊ É HIDRÁULICA. VOCÊ VAI CORTAR A FORÇA DELA.</span>',
     '',
-    'Seu único objetivo é levar <span class="bad">PRENSA</span> até <span class="ok">0.0</span>.',
-    'Você abre ou fecha <span class="hl">UMA</span> válvula por vez.',
+    '<span class="key">EM UMA FRASE:</span> feche o caminho até a <span class="bad">PRENSA</span>',
+    'sem deixar nenhum nó preso com carga e nenhuma saída aberta.',
     '',
-    '<span class="key">RASTREIE O FLUXO, NÃO APENAS O NÚMERO DA PRENSA:</span>',
-    '  1. Comece na <span class="hl">FONTE</span> e veja quais saídas estão ABR.',
-    '  2. Cada nó divide sua carga igualmente entre todas as saídas abertas.',
-    '  3. Siga D, E e F até descobrir quais ramos ainda alimentam a PRENSA.',
-    '  4. Preserve uma rota para DESCARGA ou QUEIMADOR antes de cortar um ramo.',
+    '<span class="key">TRÊS REGRAS — É SÓ ISSO QUE A REDE FAZ:</span>',
+    '  1. A <span class="hl">FONTE</span> despeja <span class="hl">12</span> o tempo todo. Você não desliga a fonte.',
+    '  2. Cada nó divide o que recebe <span class="hl">igualmente</span> entre suas saídas ABERTAS.',
+    '  3. Um nó <span class="bad">arrebenta</span> se receber mais que a CAP, ou se ficar com',
+    '     carga e <span class="bad">nenhuma</span> saída aberta. Ruptura encerra a missão.',
+    '',
+    'Vitória = <span class="bad">PRENSA</span> em <span class="ok">0.0</span>. <span class="ok">DESCARGA</span> e <span class="ok">QUEIMADOR</span> são ralos: eles',
+    'podem receber a sobra. Você aciona <span class="hl">UMA</span> válvula por manobra.',
+    '',
+    '<span class="key">COMO LER O PAINEL:</span>',
+    '  <span class="bad">ABR  ↯</span>  aberta e ainda desemboca na prensa — é essa corrente que você corta',
+    '  <span class="ok">ABR ok</span>  aberta, mas escoando para um ralo — costuma ser o respiro que te salva',
+    '  <span class="ghost">FEC   </span>  fechada',
+    '  A linha <span class="bad">↯ AINDA CHEGA NA PRENSA POR:</span> lista a corrente viva do momento.',
+    '',
+    '<span class="key">O ERRO CLÁSSICO:</span> fechar VA e VC para "cortar a prensa". A carga que',
+    'vinha por elas não some — ela empoça em D e E, que ficam sem nenhuma saída,',
+    'e arrebenta. <span class="hl">Abra o respiro</span> (VB, VD, VE, VF) <span class="hl">antes</span> de fechar a entrada.',
     '',
     '<span class="key">MAPA FIXO DA REDE</span> — cada linha é uma rota completa até um ralo:',
     '',
@@ -139,12 +152,11 @@ class ValveMission implements Mission {
     '                    └─V9→ F ┬─VE→ <span class="ok">DESCARGA</span>',
     '                            └─VF→ <span class="ok">QUEIMADOR</span>',
     '',
-    '  A <span class="bad">PRENSA</span> só bebe de D (VA) e E (VC): zere essas duas entradas —',
-    '  fechando as válvulas ou secando o que chega em D e E. Antes disso,',
-    '  abra respiro para os nós carregados e confira a folga dos ralos.',
+    '  A <span class="bad">PRENSA</span> só bebe de D (<span class="key">VA</span>) e E (<span class="key">VC</span>). Existem duas maneiras de zerar',
+    '  cada uma: fechar a válvula, ou secar o nó que a alimenta. Secar costuma',
+    '  ser mais seguro, porque não deixa carga presa atrás da válvula fechada.',
     '',
     'CARGA/CAP mostra o que o nó recebe agora e o máximo que ele suporta.',
-    'Um nó arrebenta se recebe mais que a capacidade ou retém carga sem saída.',
     'As alternativas mostram apenas a válvula, seu estado atual e os dois nós',
     'conectados. O painel não prevê a consequência: faça o percurso antes de agir.',
     '',
@@ -248,6 +260,25 @@ class ValveMission implements Mission {
     this.open = EDGES.map((_, i) => (start & (1 << i)) !== 0);
   }
 
+  /**
+   * Quais válvulas abertas ainda desembocam na PRENSA, seguindo só o que está
+   * aberto agora. Não é previsão — é o estado presente, que o jogador poderia
+   * apurar lendo linha por linha. O painel só para de cobrar essa contabilidade
+   * de cabeça sob cronômetro.
+   */
+  private pressRoutes(open: boolean[]): boolean[] {
+    const reaches = {} as Record<NodeId, boolean>;
+    for (const n of NODES) reaches[n] = false;
+    reaches.PRENSA = true;
+    // ORDER é topológica: percorrida ao contrário, todo destino já está resolvido
+    for (let k = ORDER.length - 1; k >= 0; k--) {
+      const n = ORDER[k]!;
+      if (n === 'PRENSA') continue;
+      reaches[n] = OUT[n].some((i) => open[i] && reaches[EDGES[i]!.to]);
+    }
+    return EDGES.map((e, i) => open[i] && reaches[e.to]);
+  }
+
   private mask(open: boolean[] = this.open): number {
     let m = 0;
     for (let i = 0; i < open.length; i++) if (open[i]) m |= 1 << i;
@@ -271,6 +302,7 @@ class ValveMission implements Mission {
 
   node(): MissionNode {
     const { loads } = solve(this.caps, this.open);
+    const feeds = this.pressRoutes(this.open);
 
     // Uma linha por nó, com as válvulas de saída inline. A versão anterior
     // gastava 25 linhas e engolia o mundo 3D inteiro — sob cronômetro, o olho
@@ -286,9 +318,14 @@ class ValveMission implements Mission {
       const valves = OUT[n]
         .map((i) => {
           const e = EDGES[i]!;
-          const st = this.open[i]
-            ? '<span class="ok">ABR</span>'
-            : '<span class="ghost">FEC</span>';
+          // ABR vermelho = aberta E ainda desemboca na prensa. ABR verde = aberta
+          // para um ralo. É a leitura que o jogador teria que fazer à mão.
+          // largura fixa de 6: as colunas de válvulas têm que se empilhar
+          const st = !this.open[i]
+            ? '<span class="ghost">FEC   </span>'
+            : feeds[i]
+              ? '<span class="bad">ABR  ↯</span>'
+              : '<span class="ok">ABR ok</span>';
           return `<span class="key">${e.id}</span>→${short(e.to).padEnd(3)} ${st}`;
         })
         .join('  ');
@@ -297,6 +334,12 @@ class ValveMission implements Mission {
     };
 
     const grid = ORDER.map((n) => line(n)).join('\n');
+
+    const live = EDGES.filter((_, i) => feeds[i]).map((e) => e.id);
+    const route = live.length
+      ? `\n<span class="bad">  ↯ AINDA CHEGA NA PRENSA POR: ${live.join(' ')}</span>` +
+        `<span class="f">  — corte ou desvie essa corrente</span>`
+      : `\n<span class="ok">  ↯ NENHUMA ROTA ABERTA ATÉ A PRENSA</span>`;
 
     const warn = this.lastBurst ? `\n<span class="bad">ÚLTIMA FALHA: ${this.lastBurst}</span>` : '';
     const fuse =
@@ -317,8 +360,9 @@ class ValveMission implements Mission {
     return {
       nodeLabel: `MANOBRA ${this.turn}/${this.maxTurns}`,
       bodyHtml:
-        `${guided}<span class="f">  NÓ         CARGA/CAP            VÁLVULAS DE SAÍDA</span>\n${grid}${warn}${fuse}\n` +
-        `<span class="f">  pressão que não escoa arrebenta o nó · a prensa precisa chegar a 0.0</span>`,
+        `${guided}<span class="f">  NÓ         CARGA/CAP            VÁLVULAS DE SAÍDA</span>\n${grid}${route}${warn}${fuse}\n` +
+        `<span class="f">  um nó arrebenta se receber mais que a CAP ou se ficar sem nenhuma saída aberta</span>\n` +
+        `<span class="f">  objetivo: PRENSA 0.0 — sobra para DESCARGA e QUEIMADOR, que são os ralos</span>`,
       prompt:
         this.difficulty < 0
           ? 'Qual válvula desvia a carga sem prender nem sobrecarregar o fluxo?'

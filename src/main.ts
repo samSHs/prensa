@@ -31,20 +31,20 @@ import { World } from './world/world';
 const START_DISTANCE = 11;
 const HATCH = 26;
 const EXIT_KEYS = 4;
-const BASE_SPEED = 0.24;
+const BASE_SPEED = 0.16;
 
-const GOOD_BASE = 0.8;
+const GOOD_BASE = 0.95;
 const GOOD_SPEED_BONUS = 0.65;
-const NEUTRAL_GAIN = 0.15;
-const BAD_SHOVE = 2.4;
-const BAD_ESCALATE = 0.055;
-const FATAL_SHOVE = 5.2;
-const FATAL_ESCALATE = 0.15;
-const MISSION_WIN_GAIN = 2.4;
+const NEUTRAL_GAIN = 0.2;
+const BAD_SHOVE = 1.7;
+const BAD_ESCALATE = 0.032;
+const FATAL_SHOVE = 3.6;
+const FATAL_ESCALATE = 0.09;
+const MISSION_WIN_GAIN = 2.9;
 const LOCK_HIT_GAIN = 0.45;
-const LOCK_MISS_SHOVE = 1.9;
+const LOCK_MISS_SHOVE = 1.35;
 const INSPECTION_HIT_GAIN = 0.25;
-const INSPECTION_MISS_SHOVE = 1.6;
+const INSPECTION_MISS_SHOVE = 1.15;
 const RIPPED_KEY_GAIN = 3.9;
 const RIPPED_KEY_ACCELERATE = 0.075;
 const RIPPED_KEY_PRESSURE = 0.08;
@@ -103,6 +103,8 @@ class Game {
   /** suprime o click sintetizado que costuma vir depois de um pointerdown já
    * consumido por uma trava/inspeção. */
   private suppressPointerUntil = 0;
+  /** ESC durante a partida arma a saída; o segundo ESC confirma */
+  private abandonArmedUntil = 0;
   private last = performance.now();
 
   // --- vigia de desempenho: mede os primeiros quadros e cai para o modo leve
@@ -322,7 +324,8 @@ class Game {
     this.elapsed += dt * 0.2;
     if (!this.voice.busy) {
       if (this.introIndex < this.introLines.length) {
-        this.voice.say(this.introLines[this.introIndex]!, { hold: 1.5 });
+        // a abertura só anda com ENTER; ninguém perde uma fala por piscar
+        this.voice.say(this.introLines[this.introIndex]!, { hold: 1.5, gate: true });
         this.introIndex++;
       } else {
         this.beginPlaying();
@@ -797,6 +800,13 @@ class Game {
   }
 
   private onKey(e: KeyboardEvent): void {
+    // Saída para o menu. Vem antes de tudo — travas e inspeções sequestram o
+    // teclado de propósito, e a porta de saída não pode ser sequestrável.
+    if (e.key === 'Escape' && (this.phase === 'playing' || this.phase === 'dead' || this.phase === 'won')) {
+      e.preventDefault();
+      this.abandonRun();
+      return;
+    }
     if (this.phase === 'playing' && this.interrupts.key(e.key, e.repeat)) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -877,6 +887,7 @@ class Game {
         '[0] controla o transmissor quando o rádio está aberto\n' +
         'travas e inspeções tomam o controle da entrada\n' +
         '[ENTER] avança a fala   ·   [ESC] pula a abertura\n' +
+        '[ESC] duas vezes na partida volta para este menu\n' +
         '[M] silencia   ·   fones de ouvido são recomendados',
       btn: 'JOGAR',
       hint: 'TREINAMENTO ensina cada protocolo fora da campanha',
@@ -933,6 +944,23 @@ class Game {
       this.resetRun();
       this.beginIntro();
     }
+  }
+
+  /**
+   * Volta ao menu. Durante a partida o primeiro ESC só avisa: perder uma
+   * corrida de vinte minutos por um toque na tecla errada seria pior do que
+   * não ter saída nenhuma. Nas telas de fim a corrida já acabou, então vai
+   * direto.
+   */
+  private abandonRun(): void {
+    if (this.phase === 'playing' && performance.now() > this.abandonArmedUntil) {
+      this.abandonArmedUntil = performance.now() + 3000;
+      this.toast('[ESC] de novo para abandonar e voltar ao menu');
+      return;
+    }
+    this.abandonArmedUntil = 0;
+    this.resetRun();
+    this.showTitle();
   }
 
   private openTraining(): void {

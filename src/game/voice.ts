@@ -132,6 +132,8 @@ interface Utterance {
   text: string;
   hold: number;
   who: string;
+  /** trava a fala no fim da digitação até o jogador pedir a próxima */
+  gate: boolean;
 }
 
 export class Voice {
@@ -154,11 +156,15 @@ export class Voice {
     return this.cur !== null || this.queue.length > 0;
   }
 
-  say(text: string, opts: { who?: string; hold?: number; urgent?: boolean } = {}): void {
+  say(
+    text: string,
+    opts: { who?: string; hold?: number; urgent?: boolean; gate?: boolean } = {},
+  ): void {
     const u: Utterance = {
       text,
       hold: opts.hold ?? Math.max(1.6, text.length * 0.035),
       who: opts.who ?? 'O ZELADOR',
+      gate: opts.gate ?? false,
     };
     if (opts.urgent) {
       this.queue.length = 0;
@@ -234,8 +240,8 @@ export class Voice {
 
   /**
    * ENTER na abertura: se a linha ainda está sendo digitada, completa na hora;
-   * se já terminou, corta a pausa e chama a próxima. Duas batidas por frase,
-   * então dá para atravessar o discurso inteiro no ritmo da leitura.
+   * se já terminou, chama a próxima. Duas batidas por frase, então dá para
+   * atravessar o discurso inteiro no ritmo da leitura.
    */
   advance(): void {
     const u = this.cur;
@@ -244,10 +250,20 @@ export class Voice {
       this.typed = u.text.length;
       this.lineEl.textContent = u.text;
       this.root.classList.add('done');
-      this.holdLeft = Math.min(this.holdLeft, 0.4);
+      if (!u.gate) this.holdLeft = Math.min(this.holdLeft, 0.4);
+    } else if (u.gate) {
+      // fala travada: só o jogador a dispensa
+      this.cur = null;
+      if (!this.queue.length) this.root.hidden = true;
     } else {
       this.holdLeft = 0;
     }
+  }
+
+  /** true enquanto uma fala travada espera o ENTER do jogador */
+  get waiting(): boolean {
+    const u = this.cur;
+    return u !== null && u.gate && this.typed >= u.text.length;
   }
 
   /** 1 enquanto os alto-falantes estão vivos (o mundo 3D usa isso) */
@@ -291,6 +307,8 @@ export class Voice {
       if (this.typed >= u.text.length) this.root.classList.add('done');
       return;
     }
+
+    if (u.gate) return; // a abertura não anda sozinha
 
     this.holdLeft -= dt;
     if (this.holdLeft <= 0) {

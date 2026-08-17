@@ -69,7 +69,7 @@ export class Belt {
 
   /** segundos de ciclo da prensa */
   get cycle(): number {
-    return lerp(5.0, 1.85, clamp(this.danger * 0.75 + this.pressure * 0.55, 0, 1));
+    return lerp(5.6, 2.4, clamp(this.danger * 0.75 + this.pressure * 0.55, 0, 1));
   }
 
   /** segundos até a próxima batida */
@@ -106,7 +106,7 @@ export class Belt {
     // A versão curta subia 0,25 m/s por minuto. Com missões vivas de 1–2
     // minutos isso matava até uma rota perfeita antes do primeiro resgate.
     // A deriva continua inevitável, mas agora amadurece ao longo da campanha.
-    this.base += dt * 0.00072 * (1 + this.pressure * 2.2);
+    this.base += dt * 0.00042 * (1 + this.pressure * 2.2);
     this.reverse *= Math.exp(-dt / 1.1);
 
     this.distance -= this.velocity * dt;
