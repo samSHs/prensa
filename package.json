@@ -6,6 +6,7 @@
   "main": "electron/main.cjs",
   "author": "samSHs",
   "description": "PRENSA — terror psicologico em ASCII semi-3D",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
